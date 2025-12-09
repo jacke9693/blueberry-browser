@@ -1,4 +1,4 @@
-import { globalShortcut } from "electron";
+import { globalShortcut, app } from "electron";
 import { join } from "path";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import type { Window } from "./Window";
@@ -38,7 +38,7 @@ export class KeyboardShortcutHandler {
   private configPath: string;
 
   constructor() {
-    this.configPath = join(__dirname, "../../keyboard-shortcuts.json");
+    this.configPath = join(app.getAppPath(), "keyboard-shortcuts.json");
     this.loadShortcuts();
   }
 

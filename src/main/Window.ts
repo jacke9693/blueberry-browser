@@ -1,4 +1,6 @@
 import { BaseWindow, shell } from "electron";
+import { app } from "electron";
+import path from "path";
 import { Tab } from "./Tab";
 import { TopBar } from "./TopBar";
 import { SideBar } from "./SideBar";
@@ -31,8 +33,9 @@ export class Window {
 
     this._baseWindow.setMinimumSize(1000, 800);
 
-    // Initialize MCP Manager
-    this._mcpManager = new MCPManager();
+    // Initialize MCP Manager with local config file
+    const localConfigPath = path.join(app.getAppPath(), ".mcp-config.json");
+    this._mcpManager = new MCPManager(localConfigPath);
     this._mcpManager.initialize().catch((error) => {
       console.error("Failed to initialize MCP Manager:", error);
     });

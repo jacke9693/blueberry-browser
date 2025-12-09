@@ -134,3 +134,4 @@ logs/
 *.pem
 *.key
 *.cert
+.mcp-config.json
