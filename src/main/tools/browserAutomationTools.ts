@@ -187,16 +187,16 @@ export function createBrowserAutomationTools(context: ToolContext): ToolSet {
 
     getPageInfo: tool({
       description:
-        "Get information about the current page including URL, title, and optionally a list of interactive elements.",
+        "Get information about the current page including URL, title, and text content (headings, paragraphs, etc.).",
       inputSchema: z.object({
-        includeElements: z
+        includeTextContent: z
           .boolean()
           .optional()
           .describe(
-            "Whether to include a list of interactive elements (links, buttons, inputs) - default: false",
+            "Whether to include text content from the page (headings, paragraphs, lists) - default: true",
           ),
       }),
-      execute: async ({ includeElements }) =>
+      execute: async ({ includeTextContent = true }) =>
         withActiveTab(context, (tab) =>
           withErrorHandling(async () => {
             const baseInfo = {
@@ -204,28 +204,29 @@ export function createBrowserAutomationTools(context: ToolContext): ToolSet {
               title: tab.title,
             };
 
-            if (!includeElements) {
+            if (!includeTextContent) {
               return {
                 success: true,
                 ...baseInfo,
               };
             }
 
-            const elements = await tab.runJs(`
+            const textContent = await tab.runJs(`
               (function() {
-                const getElements = (selector, type) => 
-                  Array.from(document.querySelectorAll(selector)).slice(0, 20).map(el => ({
+                const getTextContent = (selector, type, limit = 10) => 
+                  Array.from(document.querySelectorAll(selector)).slice(0, limit).map(el => ({
                     type,
-                    text: (el.textContent || el.value || '').slice(0, 50).trim(),
-                    selector: el.id ? '#' + el.id : (el.className ? '.' + el.className.split(' ')[0] : el.tagName.toLowerCase()),
-                    href: el.href || undefined,
-                    name: el.name || undefined,
-                  }));
+                    text: el.textContent?.trim().slice(0, 200) || '',
+                  })).filter(item => item.text);
                 
                 return {
-                  links: getElements('a[href]', 'link'),
-                  buttons: getElements('button, input[type="submit"], input[type="button"]', 'button'),
-                  inputs: getElements('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea, select', 'input'),
+                  headings: [
+                    ...getTextContent('h1', 'h1', 5),
+                    ...getTextContent('h2', 'h2', 10),
+                    ...getTextContent('h3', 'h3', 10),
+                  ],
+                  paragraphs: getTextContent('p', 'paragraph', 15),
+                  lists: getTextContent('ul > li, ol > li', 'list-item', 20),
                 };
               })()
             `);
@@ -233,6 +234,82 @@ export function createBrowserAutomationTools(context: ToolContext): ToolSet {
             return {
               success: true,
               ...baseInfo,
+              textContent,
+            };
+          }),
+        ),
+    }),
+
+    getInteractiveElements: tool({
+      description:
+        "Get a list of interactive elements on the current page (links, buttons, inputs, forms). Useful for understanding what actions are available on the page.",
+      inputSchema: z.object({
+        elementTypes: z
+          .array(z.enum(["links", "buttons", "inputs", "forms"]))
+          .optional()
+          .describe(
+            "Types of elements to retrieve. If not specified, returns all types.",
+          ),
+        limit: z
+          .number()
+          .optional()
+          .describe(
+            "Maximum number of elements to return per type (default: 20)",
+          ),
+      }),
+      execute: async ({ elementTypes, limit = 20 }) =>
+        withActiveTab(context, (tab) =>
+          withErrorHandling(async () => {
+            const types = elementTypes || [
+              "links",
+              "buttons",
+              "inputs",
+              "forms",
+            ];
+
+            const elements = await tab.runJs(`
+              (function() {
+                const types = ${JSON.stringify(types)};
+                const limit = ${limit};
+                const result = {};
+                
+                const getElements = (selector, type) => 
+                  Array.from(document.querySelectorAll(selector)).slice(0, limit).map(el => ({
+                    type,
+                    text: (el.textContent || el.value || el.placeholder || '').slice(0, 100).trim(),
+                    selector: el.id ? '#' + el.id : (el.className ? '.' + el.className.split(' ')[0] : el.tagName.toLowerCase()),
+                    href: el.href || undefined,
+                    name: el.name || undefined,
+                    id: el.id || undefined,
+                  })).filter(item => item.text || item.href);
+                
+                if (types.includes('links')) {
+                  result.links = getElements('a[href]', 'link');
+                }
+                if (types.includes('buttons')) {
+                  result.buttons = getElements('button, input[type="submit"], input[type="button"]', 'button');
+                }
+                if (types.includes('inputs')) {
+                  result.inputs = getElements('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea, select', 'input');
+                }
+                if (types.includes('forms')) {
+                  result.forms = Array.from(document.querySelectorAll('form')).slice(0, limit).map(form => ({
+                    type: 'form',
+                    id: form.id || undefined,
+                    name: form.name || undefined,
+                    action: form.action || undefined,
+                    method: form.method || undefined,
+                    inputCount: form.querySelectorAll('input, textarea, select').length,
+                  }));
+                }
+                
+                return result;
+              })()
+            `);
+
+            return {
+              success: true,
+              url: tab.url,
               elements,
             };
           }),

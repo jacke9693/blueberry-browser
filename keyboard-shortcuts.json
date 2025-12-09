@@ -6,7 +6,7 @@
       "description": "Summarize the current page and create a relevant task in Linear (jhsandbox team)",
       "action": {
         "type": "both",
-        "prompt": "Please summarize the current Wikipedia page about Edward VI of England and create a relevant Linear task in the jhsandbox team based on the content. Include the page URL in the task.",
+        "prompt": "Please summarize the current page and create a relevant Linear task in the jhsandbox team based on the content. Include the page URL in the task.",
         "code": "\n// Extract page title and URL\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst pageContent = document.body.innerText.substring(0, 2000); // Get first 2000 chars of content\n\n// Store in window for AI to access\nwindow.pageToSummarize = {\n  title: pageTitle,\n  url: pageUrl,\n  content: pageContent\n};\n\nconsole.log('Page data ready for summarization');\n"
       },
       "id": "shortcut-1765309185117-gsdjx3q7b",
