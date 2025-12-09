@@ -12,7 +12,6 @@ import {
   createCaptchaTools,
   type ToolSet,
 } from "./tools";
-import { CaptchaSolver } from "./CaptchaSolver";
 
 // Load environment variables from .env file
 dotenv.config({ path: join(__dirname, "../../.env") });
@@ -85,14 +84,15 @@ export class LLMClient {
       getActiveTab: () => this.window?.activeTab || null,
     });
 
-    // Create CAPTCHA solver and tools
-    const captchaSolver = new CaptchaSolver(this.model);
-    const captchaTools = createCaptchaTools(
-      {
-        getActiveTab: () => this.window?.activeTab || null,
-      },
-      captchaSolver,
-    );
+    // Create CAPTCHA tools with model and context
+    const captchaTools = this.model
+      ? createCaptchaTools(
+          {
+            getActiveTab: () => this.window?.activeTab || null,
+          },
+          this.model,
+        )
+      : {};
 
     // Combine all built-in tools
     this.builtInTools = {
