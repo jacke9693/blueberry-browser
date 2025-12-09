@@ -44,17 +44,6 @@ interface ChatContextType {
   getPageContent: () => Promise<string | null>;
   getPageText: () => Promise<string | null>;
   getCurrentUrl: () => Promise<string | null>;
-
-  // CAPTCHA operations
-  captchaDetected: boolean;
-  captchaInfo: {
-    type: string;
-    question?: string;
-  } | null;
-  detectCaptcha: () => Promise<void>;
-  solveCaptcha: () => Promise<void>;
-  captchaSolving: boolean;
-  captchaResult: string | null;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -73,13 +62,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toolActivity, setToolActivity] = useState<ToolActivity[]>([]);
-  const [captchaDetected, setCaptchaDetected] = useState(false);
-  const [captchaInfo, setCaptchaInfo] = useState<{
-    type: string;
-    question?: string;
-  } | null>(null);
-  const [captchaSolving, setCaptchaSolving] = useState(false);
-  const [captchaResult, setCaptchaResult] = useState<string | null>(null);
 
   // Load initial messages from main process
   useEffect(() => {
@@ -164,43 +146,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       return null;
     }
   }, []);
-
-  const detectCaptcha = useCallback(async () => {
-    try {
-      const result = await window.sidebarAPI.detectCaptcha();
-      setCaptchaDetected(result.found);
-      if (result.found) {
-        setCaptchaInfo({
-          type: result.type,
-          question: result.question,
-        });
-      } else {
-        setCaptchaInfo(null);
-      }
-    } catch (error) {
-      console.error("Failed to detect CAPTCHA:", error);
-      setCaptchaDetected(false);
-      setCaptchaInfo(null);
-    }
-  }, []);
-
-  const solveCaptcha = useCallback(async () => {
-    setCaptchaSolving(true);
-    setCaptchaResult(null);
-    try {
-      const result = await window.sidebarAPI.solveCaptcha();
-      setCaptchaResult(result.message);
-      if (result.success) {
-        // Re-detect to see if CAPTCHA is now filled
-        setTimeout(() => detectCaptcha(), 1000);
-      }
-    } catch (error) {
-      console.error("Failed to solve CAPTCHA:", error);
-      setCaptchaResult("Failed to solve CAPTCHA");
-    } finally {
-      setCaptchaSolving(false);
-    }
-  }, [detectCaptcha]);
 
   // Set up message listeners
   useEffect(() => {
@@ -292,21 +237,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  // Auto-detect CAPTCHA on page changes
-  useEffect(() => {
-    const checkForCaptcha = async () => {
-      await detectCaptcha();
-    };
-
-    // Initial check
-    checkForCaptcha();
-
-    // Poll every 3 seconds for CAPTCHA detection
-    const interval = setInterval(checkForCaptcha, 3000);
-
-    return () => clearInterval(interval);
-  }, [detectCaptcha]);
-
   const value: ChatContextType = {
     messages,
     isLoading,
@@ -316,12 +246,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
     getPageContent,
     getPageText,
     getCurrentUrl,
-    captchaDetected,
-    captchaInfo,
-    detectCaptcha,
-    solveCaptcha,
-    captchaSolving,
-    captchaResult,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

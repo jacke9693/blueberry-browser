@@ -28,20 +28,6 @@ interface TopBarAPI {
 
   // Sidebar
   toggleSidebar: () => Promise<void>;
-
-  // CAPTCHA solving
-  detectCaptcha: () => Promise<{
-    found: boolean;
-    type: "text" | "image" | "recaptcha" | "hcaptcha" | "unknown";
-    selector?: string;
-    imageUrl?: string;
-    question?: string;
-  }>;
-  solveCaptcha: () => Promise<{
-    success: boolean;
-    message: string;
-    answer?: string;
-  }>;
 }
 
 declare global {

@@ -4,7 +4,6 @@ import path from "path";
 import { Tab } from "./Tab";
 import { TopBar } from "./TopBar";
 import { SideBar } from "./SideBar";
-import { CaptchaSolver } from "./CaptchaSolver";
 import { MCPManager } from "./MCPManager";
 import { KeyboardShortcutHandler } from "./KeyboardShortcutHandler";
 
@@ -15,7 +14,6 @@ export class Window {
   private tabCounter: number = 0;
   private _topBar: TopBar;
   private _sideBar: SideBar;
-  private _captchaSolver: CaptchaSolver;
   private _mcpManager: MCPManager;
   private _keyboardShortcutHandler: KeyboardShortcutHandler;
 
@@ -49,9 +47,6 @@ export class Window {
 
     // Set the window reference on the LLM client to avoid circular dependency
     this._sideBar.client.setWindow(this);
-
-    // Initialize CAPTCHA solver with the same model as the chat
-    this._captchaSolver = new CaptchaSolver(this._sideBar.client.getModel());
 
     // Create the first tab
     this.createTab();
@@ -299,11 +294,6 @@ export class Window {
   // Getter for baseWindow to access from Menu
   get baseWindow(): BaseWindow {
     return this._baseWindow;
-  }
-
-  // Getter for CAPTCHA solver
-  get captchaSolver(): CaptchaSolver {
-    return this._captchaSolver;
   }
 
   // Getter for keyboard shortcut handler

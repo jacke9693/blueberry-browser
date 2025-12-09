@@ -1,5 +1,6 @@
-import { streamText } from "ai";
+import { generateObject, generateText } from "ai";
 import type { LanguageModel } from "ai";
+import { z } from "zod";
 import type { Tab } from "./Tab";
 
 interface CaptchaDetectionResult {
@@ -8,6 +9,12 @@ interface CaptchaDetectionResult {
   selector?: string;
   imageUrl?: string;
   question?: string;
+}
+
+interface RecaptchaAnalysis {
+  prompt: string;
+  gridSize: number;
+  selectedImages: number[];
 }
 
 interface CaptchaSolution {
@@ -104,20 +111,27 @@ export class CaptchaSolver {
 
       const prompt = `${instruction}
 
-Analyze this reCAPTCHA/hCAPTCHA challenge and respond with ONLY a JSON object in this exact format:
-{
-  "prompt": "the text of the CAPTCHA prompt/question",
-  "gridSize": 9,
-  "selectedImages": [1, 2, 8, 9]
-}
+Analyze this reCAPTCHA/hCAPTCHA challenge and identify which images match the prompt.
 
 Rules:
 - Count images from 1-9, starting top-left, going left-to-right, top-to-bottom
 - Only include image numbers that match the prompt criteria
-- Return ONLY the JSON object, no other text`;
+- Be accurate and conservative - only select images that clearly match`;
 
-      const { textStream } = streamText({
+      // Use generateObject for structured output
+      const result = await generateObject({
         model: this.model,
+        schema: z.object({
+          prompt: z
+            .string()
+            .describe("The text of the CAPTCHA prompt/question"),
+          gridSize: z
+            .number()
+            .describe("Number of images in the grid (usually 9)"),
+          selectedImages: z
+            .array(z.number())
+            .describe("Array of image numbers (1-9) that match the prompt"),
+        }),
         messages: [
           {
             role: "user",
@@ -136,21 +150,7 @@ Rules:
         temperature: 0.1,
       });
 
-      let fullAnswer = "";
-      for await (const chunk of textStream) {
-        fullAnswer += chunk;
-      }
-
-      // Parse the JSON response
-      const jsonMatch = fullAnswer.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return {
-          success: false,
-          error: "Could not parse LLM response as JSON",
-        };
-      }
-
-      const analysis = JSON.parse(jsonMatch[0]);
+      const analysis = result.object as RecaptchaAnalysis;
       console.log("CAPTCHA Analysis:", analysis);
 
       // Click the selected images
@@ -369,11 +369,9 @@ Rules:
     }
 
     try {
-      // Take a screenshot of the page
       const screenshot = await tab.screenshot();
       const screenshotDataUrl = screenshot.toDataURL();
 
-      // Build prompt for LLM
       const prompt = `You are a CAPTCHA solver. Look at the screenshot and answer the CAPTCHA question.
 
 Question: ${question}
@@ -387,8 +385,8 @@ Instructions:
 
 Answer:`;
 
-      // Call LLM with vision
-      const result = await streamText({
+      // Use generateText for simple text response
+      const result = await generateText({
         model: this.model,
         messages: [
           {
@@ -405,18 +403,12 @@ Answer:`;
             ],
           },
         ],
-        temperature: 0.1, // Low temperature for more accurate answers
+        temperature: 0.1,
       });
 
-      // Collect the full response
-      let answer = "";
-      for await (const chunk of result.textStream) {
-        answer += chunk;
-      }
-
       // Clean up the answer
-      answer = answer.trim().split("\n")[0]; // Take only first line
-      answer = answer.replace(/[^a-zA-Z0-9\s]/g, ""); // Remove special chars for simple CAPTCHAs
+      let answer = result.text.trim().split("\n")[0]; // Take only first line
+      answer = answer.replace(/[^a-zA-Z0-9\s]/g, ""); // Remove special chars
 
       return {
         success: true,
@@ -448,7 +440,6 @@ Answer:`;
     }
 
     try {
-      // For image CAPTCHAs, we'll use both the specific image and page context
       const screenshot = await tab.screenshot();
       const screenshotDataUrl = screenshot.toDataURL();
 
@@ -466,7 +457,7 @@ Instructions:
 
 Answer:`;
 
-      const result = await streamText({
+      const result = await generateText({
         model: this.model,
         messages: [
           {
@@ -486,14 +477,8 @@ Answer:`;
         temperature: 0.1,
       });
 
-      // Collect the full response
-      let answer = "";
-      for await (const chunk of result.textStream) {
-        answer += chunk;
-      }
-
       // Clean up the answer
-      answer = answer.trim().split("\n")[0];
+      let answer = result.text.trim().split("\n")[0];
       answer = answer.replace(/[^a-zA-Z0-9\s]/g, "");
 
       return {

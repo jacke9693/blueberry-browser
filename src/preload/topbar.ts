@@ -30,10 +30,6 @@ const topBarAPI = {
 
   // Sidebar
   toggleSidebar: () => electronAPI.ipcRenderer.invoke("toggle-sidebar"),
-
-  // CAPTCHA solving
-  detectCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-detect"),
-  solveCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-solve"),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

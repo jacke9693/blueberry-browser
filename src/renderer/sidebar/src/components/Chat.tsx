@@ -6,7 +6,6 @@ import { ArrowUp, Plus, Settings, Wrench, Check, Loader2 } from "lucide-react";
 import { useChat } from "../contexts/ChatContext";
 import { cn } from "@common/lib/utils";
 import { Button } from "@common/components/Button";
-import { CaptchaAlert } from "./CaptchaAlert";
 
 interface Message {
   id: string;
@@ -408,9 +407,6 @@ export const Chat: React.FC<{ onOpenSettings: () => void }> = ({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
-        {/* CAPTCHA Alert */}
-        <CaptchaAlert />
-
         <div className="pb-4 relative max-w-3xl mx-auto px-4">
           {messages.length === 0 ? (
             // Empty State

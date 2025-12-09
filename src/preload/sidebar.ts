@@ -61,10 +61,6 @@ const sidebarAPI = {
   // Tab information
   getActiveTabInfo: () => electronAPI.ipcRenderer.invoke("get-active-tab-info"),
 
-  // CAPTCHA operations
-  detectCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-detect"),
-  solveCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-solve"),
-
   // Keyboard shortcuts
   getKeyboardShortcuts: () =>
     electronAPI.ipcRenderer.invoke("keyboard-shortcuts:get-all"),

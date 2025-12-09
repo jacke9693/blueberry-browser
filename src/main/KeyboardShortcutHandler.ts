@@ -17,19 +17,8 @@ export interface KeyboardShortcut {
   createdAt: number;
 }
 
-// Legacy support: if a shortcut has `prompt` field, convert to new format
-interface LegacyKeyboardShortcut {
-  id: string;
-  accelerator: string;
-  name: string;
-  description: string;
-  prompt?: string;
-  action?: ShortcutAction;
-  createdAt: number;
-}
-
 interface ShortcutsConfig {
-  shortcuts: (KeyboardShortcut | LegacyKeyboardShortcut)[];
+  shortcuts: KeyboardShortcut[];
 }
 
 export class KeyboardShortcutHandler {
@@ -47,31 +36,13 @@ export class KeyboardShortcutHandler {
     this.registerAllShortcuts();
   }
 
-  private migrateLegacyShortcut(
-    legacy: LegacyKeyboardShortcut,
-  ): KeyboardShortcut {
-    // Convert legacy prompt-only format to new action format
-    if (legacy.action) {
-      return legacy as KeyboardShortcut;
-    }
-    return {
-      id: legacy.id,
-      accelerator: legacy.accelerator,
-      name: legacy.name,
-      description: legacy.description,
-      action: { type: "prompt", prompt: legacy.prompt || "" },
-      createdAt: legacy.createdAt,
-    };
-  }
-
   private loadShortcuts(): void {
     try {
       if (existsSync(this.configPath)) {
         const data = readFileSync(this.configPath, "utf-8");
         const config: ShortcutsConfig = JSON.parse(data);
         config.shortcuts.forEach((shortcut) => {
-          const migrated = this.migrateLegacyShortcut(shortcut);
-          this.shortcuts.set(migrated.id, migrated);
+          this.shortcuts.set(shortcut.id, shortcut);
         });
         console.log(
           `✅ Loaded ${this.shortcuts.size} keyboard shortcut(s) from config`,

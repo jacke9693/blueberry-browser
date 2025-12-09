@@ -9,8 +9,10 @@ import type { MCPManager } from "./MCPManager";
 import {
   createKeyboardShortcutTools,
   createBrowserAutomationTools,
+  createCaptchaTools,
   type ToolSet,
 } from "./tools";
+import { CaptchaSolver } from "./CaptchaSolver";
 
 // Load environment variables from .env file
 dotenv.config({ path: join(__dirname, "../../.env") });
@@ -83,10 +85,20 @@ export class LLMClient {
       getActiveTab: () => this.window?.activeTab || null,
     });
 
+    // Create CAPTCHA solver and tools
+    const captchaSolver = new CaptchaSolver(this.model);
+    const captchaTools = createCaptchaTools(
+      {
+        getActiveTab: () => this.window?.activeTab || null,
+      },
+      captchaSolver,
+    );
+
     // Combine all built-in tools
     this.builtInTools = {
       ...keyboardTools,
       ...browserTools,
+      ...captchaTools,
     };
 
     console.log(
@@ -277,6 +289,18 @@ export class LLMClient {
       "- 'extractData': Extract structured data using CSS selectors",
       "- 'waitForElement': Wait for elements to appear (useful after navigation)",
       "- 'screenshot': Capture a screenshot of the current page",
+      "",
+      "=== CAPTCHA SOLVING ===",
+      "You can automatically detect and solve CAPTCHAs on web pages:",
+      "- 'detectCaptcha': Check if a CAPTCHA is present and get its type and details",
+      "- 'solveCaptcha': Automatically solve any detected CAPTCHA (reCAPTCHA, hCaptcha, text, or image)",
+      "- 'solveTextCaptcha': Solve text-based CAPTCHAs (math problems, distorted text)",
+      "- 'solveImageCaptcha': Solve image-based CAPTCHAs (read text from images)",
+      "- 'fillCaptchaAnswer': Fill a known answer into a CAPTCHA field",
+      "",
+      "The CAPTCHA solver uses AI vision to analyze challenges and can handle multi-iteration reCAPTCHA.",
+      "Always use 'detectCaptcha' first to check if a CAPTCHA exists before attempting to solve.",
+      "For reCAPTCHA/hCaptcha, 'solveCaptcha' will automatically handle clicking checkboxes and solving image grids.",
       "",
       "When automating, prefer using specific tools (clickElement, typeText) over raw JavaScript when possible.",
       "For complex operations, you can chain multiple tool calls together.",

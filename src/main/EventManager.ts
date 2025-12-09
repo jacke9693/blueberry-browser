@@ -22,9 +22,6 @@ export class EventManager {
     // Dark mode events
     this.handleDarkModeEvents();
 
-    // CAPTCHA events
-    this.handleCaptchaEvents();
-
     // Keyboard shortcut events
     this.handleKeyboardShortcutEvents();
 
@@ -227,29 +224,6 @@ export class EventManager {
   private handleDebugEvents(): void {
     // Ping test
     ipcMain.on("ping", () => console.log("pong"));
-  }
-
-  private handleCaptchaEvents(): void {
-    // Detect CAPTCHA on current page
-    ipcMain.handle("captcha-detect", async () => {
-      const activeTab = this.mainWindow.activeTab;
-      if (!activeTab) {
-        return { found: false, type: "unknown" };
-      }
-      return await this.mainWindow.captchaSolver.detectCaptcha(activeTab);
-    });
-
-    // Auto-solve CAPTCHA
-    ipcMain.handle("captcha-solve", async () => {
-      const activeTab = this.mainWindow.activeTab;
-      if (!activeTab) {
-        return {
-          success: false,
-          message: "No active tab",
-        };
-      }
-      return await this.mainWindow.captchaSolver.autoSolveCaptcha(activeTab);
-    });
   }
 
   private handleKeyboardShortcutEvents(): void {

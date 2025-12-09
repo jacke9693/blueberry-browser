@@ -55,20 +55,6 @@ interface SidebarAPI {
   // Tab information
   getActiveTabInfo: () => Promise<TabInfo | null>;
 
-  // CAPTCHA operations
-  detectCaptcha: () => Promise<{
-    found: boolean;
-    type: "text" | "image" | "recaptcha" | "hcaptcha" | "unknown";
-    selector?: string;
-    imageUrl?: string;
-    question?: string;
-  }>;
-  solveCaptcha: () => Promise<{
-    success: boolean;
-    message: string;
-    answer?: string;
-  }>;
-
   // Keyboard shortcuts
   getKeyboardShortcuts: () => Promise<KeyboardShortcut[]>;
   getKeyboardShortcut: (id: string) => Promise<KeyboardShortcut | null>;
