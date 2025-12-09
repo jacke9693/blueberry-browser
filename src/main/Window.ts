@@ -2,6 +2,9 @@ import { BaseWindow, shell } from "electron";
 import { Tab } from "./Tab";
 import { TopBar } from "./TopBar";
 import { SideBar } from "./SideBar";
+import { CaptchaSolver } from "./CaptchaSolver";
+import { MCPManager } from "./MCPManager";
+import { KeyboardShortcutHandler } from "./KeyboardShortcutHandler";
 
 export class Window {
   private _baseWindow: BaseWindow;
@@ -10,6 +13,9 @@ export class Window {
   private tabCounter: number = 0;
   private _topBar: TopBar;
   private _sideBar: SideBar;
+  private _captchaSolver: CaptchaSolver;
+  private _mcpManager: MCPManager;
+  private _keyboardShortcutHandler: KeyboardShortcutHandler;
 
   constructor() {
     // Create the browser window.
@@ -25,11 +31,24 @@ export class Window {
 
     this._baseWindow.setMinimumSize(1000, 800);
 
+    // Initialize MCP Manager
+    this._mcpManager = new MCPManager();
+    this._mcpManager.initialize().catch((error) => {
+      console.error("Failed to initialize MCP Manager:", error);
+    });
+
+    // Initialize keyboard shortcut handler before LLMClient needs it
+    this._keyboardShortcutHandler = new KeyboardShortcutHandler();
+    this._keyboardShortcutHandler.setWindow(this);
+
     this._topBar = new TopBar(this._baseWindow);
-    this._sideBar = new SideBar(this._baseWindow);
+    this._sideBar = new SideBar(this._baseWindow, this._mcpManager);
 
     // Set the window reference on the LLM client to avoid circular dependency
     this._sideBar.client.setWindow(this);
+
+    // Initialize CAPTCHA solver with the same model as the chat
+    this._captchaSolver = new CaptchaSolver(this._sideBar.client.getModel());
 
     // Create the first tab
     this.createTab();
@@ -62,6 +81,14 @@ export class Window {
 
   private setupEventListeners(): void {
     this._baseWindow.on("closed", () => {
+      // Clean up MCP connections
+      this._mcpManager.cleanup().catch((error) => {
+        console.error("Error cleaning up MCP Manager:", error);
+      });
+
+      // Clean up keyboard shortcuts
+      this._keyboardShortcutHandler.cleanup();
+
       // Clean up all tabs when window is closed
       this.tabsMap.forEach((tab) => tab.destroy());
       this.tabsMap.clear();
@@ -269,5 +296,15 @@ export class Window {
   // Getter for baseWindow to access from Menu
   get baseWindow(): BaseWindow {
     return this._baseWindow;
+  }
+
+  // Getter for CAPTCHA solver
+  get captchaSolver(): CaptchaSolver {
+    return this._captchaSolver;
+  }
+
+  // Getter for keyboard shortcut handler
+  get keyboardShortcutHandler(): KeyboardShortcutHandler {
+    return this._keyboardShortcutHandler;
   }
 }

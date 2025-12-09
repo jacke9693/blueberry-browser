@@ -1,0 +1,169 @@
+{
+  "shortcuts": [
+    {
+      "accelerator": "CmdOrCtrl+Shift+S",
+      "name": "Summarize Page",
+      "description": "Extracts and summarizes the main content of the current page",
+      "action": {
+        "type": "both",
+        "prompt": "Please summarize the following page content:\\n\\nTitle: {pageTitle}\\nURL: {pageUrl}\\n\\nMain headings and text:\\n{mainText}",
+        "code": "\n// Extract main page content\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent.trim()).slice(0, 5);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(p => p.textContent.trim()).filter(p => p.length > 0).slice(0, 3);\nconst mainText = [pageTitle, ...headings, ...paragraphs].join('\\n');\n\n// Copy to clipboard\nnavigator.clipboard.writeText(mainText);\nconsole.log('Page content copied to clipboard for summarization');\n"
+      },
+      "id": "shortcut-1765235206162-07s85fjfw",
+      "createdAt": 1765235206162
+    },
+    {
+      "accelerator": "CmdOrCtrl+Shift+M",
+      "name": "Summarize Page",
+      "description": "Extracts and summarizes the main content of the current page",
+      "action": {
+        "type": "both",
+        "prompt": "Please summarize the following page content:\\n\\nTitle: {pageTitle}\\nURL: {pageUrl}\\n\\nMain headings and text:\\n{mainText}",
+        "code": "\n// Extract main page content\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent.trim()).slice(0, 5);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(p => p.textContent.trim()).filter(p => p.length > 0).slice(0, 3);\nconst mainText = [pageTitle, ...headings, ...paragraphs].join('\\n');\n\n// Copy to clipboard\nnavigator.clipboard.writeText(mainText);\nconsole.log('Page content copied to clipboard for summarization');\n"
+      },
+      "id": "shortcut-1765235208893-x4n8ky251",
+      "createdAt": 1765235208893
+    },
+    {
+      "accelerator": "Alt+S",
+      "name": "Summarize Page",
+      "description": "Extracts and summarizes the main content of the current page",
+      "action": {
+        "type": "prompt",
+        "prompt": "Please summarize the key content of this page. The page is titled \"{pageTitle}\" and contains information about Google's search interface in Swedish. Main elements include the Google logo, search bar with AI-läge option, and various footer links related to privacy and settings."
+      },
+      "id": "shortcut-1765235211071-r1qp3iadk",
+      "createdAt": 1765235211071
+    },
+    {
+      "accelerator": "Alt+Shift+S",
+      "name": "Summarize Page",
+      "description": "Summarizes the main content of the current page",
+      "action": {
+        "type": "prompt",
+        "prompt": "Please provide a concise summary of the current webpage content, including the main purpose, key sections, and important information."
+      },
+      "id": "shortcut-1765235212661-8vc4c490c",
+      "createdAt": 1765235212662
+    },
+    {
+      "accelerator": "CmdOrCtrl+Shift+9",
+      "name": "Summarize Page",
+      "description": "Summarizes the main content of the current page",
+      "action": {
+        "type": "prompt",
+        "prompt": "Please provide a concise summary of the current webpage content, including the main purpose, key sections, and important information."
+      },
+      "id": "shortcut-1765235213994-p7orsaqyf",
+      "createdAt": 1765235213994
+    },
+    {
+      "accelerator": "CmdOrCtrl+Shift+L",
+      "name": "Summarize & Create Linear Task",
+      "description": "Summarizes the current page and creates a Linear task reminder with the summary",
+      "action": {
+        "type": "both",
+        "prompt": "Please summarize the current page and help me create a Linear task reminder. Here's the page information:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Main Content:**\n{mainText}\n\nPlease:\n1. Provide a brief summary of this page\n2. Suggest a task title for Linear\n3. Help me create a reminder task that captures the key information\n\nWhat would you like the Linear task to be about?",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst mainText = Array.from(document.querySelectorAll('h1, h2, h3, p')).map(el => el.textContent).filter(text => text.trim()).slice(0, 10).join('\\n');\n\n// Create a summary object and store it\nwindow.pageSummaryData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainText,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Page data captured:', window.pageSummaryData);\n"
+      },
+      "id": "shortcut-1765235317082-3ubg44udt",
+      "createdAt": 1765235317082
+    },
+    {
+      "accelerator": "CmdOrCtrl+Alt+T",
+      "name": "Summarize & Create Linear Task",
+      "description": "Summarizes the current page and creates a Linear task reminder with the summary",
+      "action": {
+        "type": "both",
+        "prompt": "Please summarize the current page and help me create a Linear task reminder. Here's the page information:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Main Content:**\n{mainText}\n\nPlease:\n1. Provide a brief summary of this page\n2. Suggest a task title for Linear\n3. Help me create a reminder task that captures the key information\n\nWhat would you like the Linear task to be about?",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst mainText = Array.from(document.querySelectorAll('h1, h2, h3, p')).map(el => el.textContent).filter(text => text.trim()).slice(0, 10).join('\\n');\n\n// Create a summary object and store it\nwindow.pageSummaryData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainText,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Page data captured:', window.pageSummaryData);\n"
+      },
+      "id": "shortcut-1765235319613-dhzj6h1s2",
+      "createdAt": 1765235319613
+    },
+    {
+      "accelerator": "CmdOrCtrl+Shift+5",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235325509-j4b085x54",
+      "createdAt": 1765235325509
+    },
+    {
+      "accelerator": "Alt+T",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235328933-spae7cy5o",
+      "createdAt": 1765235328933
+    },
+    {
+      "accelerator": "Alt+L",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235352318-lybmjv9jf",
+      "createdAt": 1765235352318
+    },
+    {
+      "accelerator": "Ctrl+Alt+L",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235410181-77qxbld26",
+      "createdAt": 1765235410181
+    },
+    {
+      "accelerator": "Alt+Shift+T",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235412898-olazltuys",
+      "createdAt": 1765235412898
+    },
+    {
+      "accelerator": "CmdOrCtrl+Alt+L",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235415465-kh82txizy",
+      "createdAt": 1765235415465
+    },
+    {
+      "accelerator": "CmdOrCtrl+Shift+7",
+      "name": "Page Summary & Linear Task",
+      "description": "Summarizes current page and creates a Linear task reminder with the summary and page link",
+      "action": {
+        "type": "both",
+        "prompt": "I've captured the current page information. Here's what I found:\n\n**Page Title:** {pageTitle}\n**URL:** {pageUrl}\n\n**Key Content:**\n{mainText}\n\nNow, let me help you create a Linear task reminder. Please provide:\n1. Which Linear team should this task go to?\n2. What should be the task title? (I can suggest: \"Review: {pageTitle}\")\n3. Any specific priority or due date?\n4. Should I add the page URL as a link in the task description?\n\nOr I can create it with defaults if you'd like!",
+        "code": "\n// Extract page information\nconst pageTitle = document.title;\nconst pageUrl = window.location.href;\nconst headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(el => el.textContent.trim()).filter(text => text);\nconst paragraphs = Array.from(document.querySelectorAll('p')).map(el => el.textContent.trim()).filter(text => text).slice(0, 5);\nconst mainContent = [...headings, ...paragraphs].join('\\n');\n\n// Store for Linear task creation\nwindow.pageTaskData = {\n  title: pageTitle,\n  url: pageUrl,\n  content: mainContent,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('✓ Page captured for Linear task:', window.pageTaskData);\n"
+      },
+      "id": "shortcut-1765235467990-j6z3t4j8d",
+      "createdAt": 1765235467990
+    }
+  ]
+}

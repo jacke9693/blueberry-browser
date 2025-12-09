@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "example-server": {
+      "command": "node",
+      "args": ["path/to/your/mcp-server.js"],
+      "env": {
+        "API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}

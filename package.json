@@ -21,18 +21,21 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.17",
-    "@ai-sdk/openai": "^2.0.30",
+    "@ai-sdk/anthropic": "^2.0.53",
+    "@ai-sdk/mcp": "^0.0.11",
+    "@ai-sdk/openai": "^2.0.79",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@modelcontextprotocol/sdk": "^1.23.0",
     "@radix-ui/react-slot": "^1.2.3",
-    "ai": "^5.0.44",
+    "ai": "^5.0.108",
     "class-variance-authority": "^0.7.1",
     "dotenv": "^17.2.2",
     "lucide-react": "^0.544.0",
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

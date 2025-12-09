@@ -29,8 +29,11 @@ const topBarAPI = {
     electronAPI.ipcRenderer.invoke("tab-run-js", tabId, code),
 
   // Sidebar
-  toggleSidebar: () =>
-    electronAPI.ipcRenderer.invoke("toggle-sidebar"),
+  toggleSidebar: () => electronAPI.ipcRenderer.invoke("toggle-sidebar"),
+
+  // CAPTCHA solving
+  detectCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-detect"),
+  solveCaptcha: () => electronAPI.ipcRenderer.invoke("captcha-solve"),
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -49,4 +52,3 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.topBarAPI = topBarAPI;
 }
-

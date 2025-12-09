@@ -1,10 +1,16 @@
 import { WebContents } from "electron";
-import { streamText, type LanguageModel, type CoreMessage } from "ai";
+import { streamText, stepCountIs, type LanguageModel, ModelMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 import * as dotenv from "dotenv";
 import { join } from "path";
 import type { Window } from "./Window";
+import type { MCPManager } from "./MCPManager";
+import {
+  createKeyboardShortcutTools,
+  createBrowserAutomationTools,
+  type ToolSet,
+} from "./tools";
 
 // Load environment variables from .env file
 dotenv.config({ path: join(__dirname, "../../.env") });
@@ -17,13 +23,21 @@ interface ChatRequest {
 interface StreamChunk {
   content: string;
   isComplete: boolean;
+  toolCall?: {
+    toolName: string;
+    args: Record<string, unknown>;
+  };
+  toolResult?: {
+    toolName: string;
+    result: unknown;
+  };
 }
 
 type LLMProvider = "openai" | "anthropic";
 
 const DEFAULT_MODELS: Record<LLMProvider, string> = {
-  openai: "gpt-4o-mini",
-  anthropic: "claude-3-5-sonnet-20241022",
+  openai: "gpt-5-mini",
+  anthropic: "claude-haiku-4-5",
 };
 
 const MAX_CONTEXT_LENGTH = 4000;
@@ -33,131 +47,155 @@ export class LLMClient {
   private readonly webContents: WebContents;
   private window: Window | null = null;
   private readonly provider: LLMProvider;
-  private readonly modelName: string;
   private readonly model: LanguageModel | null;
-  private messages: CoreMessage[] = [];
+  private messages: ModelMessage[] = [];
+  private mcpManager: MCPManager | null = null;
+  private mcpTools: ToolSet = {};
+  private builtInTools: ToolSet = {};
 
-  constructor(webContents: WebContents) {
+  constructor(webContents: WebContents, mcpManager?: MCPManager) {
     this.webContents = webContents;
-    this.provider = this.getProvider();
-    this.modelName = this.getModelName();
+    this.provider =
+      process.env.LLM_PROVIDER?.toLowerCase() === "anthropic"
+        ? "anthropic"
+        : "openai";
     this.model = this.initializeModel();
+    this.mcpManager = mcpManager || null;
 
     this.logInitializationStatus();
   }
 
-  // Set the window reference after construction to avoid circular dependencies
   setWindow(window: Window): void {
     this.window = window;
+    this.initializeBuiltInTools();
   }
 
-  private getProvider(): LLMProvider {
-    const provider = process.env.LLM_PROVIDER?.toLowerCase();
-    if (provider === "anthropic") return "anthropic";
-    return "openai"; // Default to OpenAI
-  }
+  private initializeBuiltInTools(): void {
+    if (!this.window) return;
 
-  private getModelName(): string {
-    return process.env.LLM_MODEL || DEFAULT_MODELS[this.provider];
+    const handler = this.window.keyboardShortcutHandler;
+
+    // Create keyboard shortcut tools
+    const keyboardTools = createKeyboardShortcutTools(handler);
+
+    // Create browser automation tools with context
+    const browserTools = createBrowserAutomationTools({
+      getActiveTab: () => this.window?.activeTab || null,
+    });
+
+    // Combine all built-in tools
+    this.builtInTools = {
+      ...keyboardTools,
+      ...browserTools,
+    };
+
+    console.log(
+      `✅ Initialized ${Object.keys(this.builtInTools).length} built-in tool(s): ${Object.keys(this.builtInTools).join(", ")}`,
+    );
   }
 
   private initializeModel(): LanguageModel | null {
-    const apiKey = this.getApiKey();
+    const apiKey =
+      this.provider === "anthropic"
+        ? process.env.ANTHROPIC_API_KEY
+        : process.env.OPENAI_API_KEY;
+
     if (!apiKey) return null;
 
-    switch (this.provider) {
-      case "anthropic":
-        return anthropic(this.modelName);
-      case "openai":
-        return openai(this.modelName);
-      default:
-        return null;
-    }
-  }
+    const modelName = process.env.LLM_MODEL || DEFAULT_MODELS[this.provider];
 
-  private getApiKey(): string | undefined {
-    switch (this.provider) {
-      case "anthropic":
-        return process.env.ANTHROPIC_API_KEY;
-      case "openai":
-        return process.env.OPENAI_API_KEY;
-      default:
-        return undefined;
-    }
+    return this.provider === "anthropic"
+      ? anthropic(modelName)
+      : openai(modelName);
   }
 
   private logInitializationStatus(): void {
     if (this.model) {
+      const modelName = process.env.LLM_MODEL || DEFAULT_MODELS[this.provider];
       console.log(
-        `✅ LLM Client initialized with ${this.provider} provider using model: ${this.modelName}`
+        `✅ LLM Client initialized with ${this.provider} provider using model: ${modelName}`,
       );
     } else {
       const keyName =
         this.provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
       console.error(
         `❌ LLM Client initialization failed: ${keyName} not found in environment variables.\n` +
-          `Please add your API key to the .env file in the project root.`
+          `Please add your API key to the .env file in the project root.`,
       );
+    }
+  }
+
+  private async initializeMCPTools(): Promise<void> {
+    if (!this.mcpManager) return;
+
+    if (this.mcpManager.getServerCount() === 0) return;
+
+    try {
+      // Get all tools from all connected MCP servers
+      const allServerTools = await this.mcpManager.getAllTools();
+
+      if (Object.keys(allServerTools).length > 0) {
+        // Merge all server tools into a single tools object
+        // The tools from each server are already in AI SDK format
+        for (const [, serverTools] of Object.entries(allServerTools)) {
+          Object.assign(this.mcpTools, serverTools);
+        }
+
+        console.log(
+          `✅ Initialized ${Object.keys(this.mcpTools).length} MCP tool(s) from ${Object.keys(allServerTools).length} server(s):`,
+          Object.keys(this.mcpTools).join(", "),
+        );
+      }
+    } catch (error) {
+      console.error("Error initializing MCP tools:", error);
     }
   }
 
   async sendChatMessage(request: ChatRequest): Promise<void> {
     try {
-      // Get screenshot from active tab if available
-      let screenshot: string | null = null;
-      if (this.window) {
-        const activeTab = this.window.activeTab;
-        if (activeTab) {
-          try {
-            const image = await activeTab.screenshot();
-            screenshot = image.toDataURL();
-          } catch (error) {
-            console.error("Failed to capture screenshot:", error);
-          }
-        }
-      }
+      const screenshot = await this.getScreenshot();
+      const userContent: Array<
+        { type: "image"; image: string } | { type: "text"; text: string }
+      > = [];
 
-      // Build user message content with screenshot first, then text
-      const userContent: any[] = [];
-      
-      // Add screenshot as the first part if available
       if (screenshot) {
-        userContent.push({
-          type: "image",
-          image: screenshot,
-        });
+        userContent.push({ type: "image", image: screenshot });
       }
-      
-      // Add text content
-      userContent.push({
-        type: "text",
-        text: request.message,
-      });
+      userContent.push({ type: "text", text: request.message });
 
-      // Create user message in CoreMessage format
-      const userMessage: CoreMessage = {
+      const userMessage: ModelMessage = {
         role: "user",
         content: userContent.length === 1 ? request.message : userContent,
       };
-      
-      this.messages.push(userMessage);
 
-      // Send updated messages to renderer
+      this.messages.push(userMessage);
       this.sendMessagesToRenderer();
 
       if (!this.model) {
         this.sendErrorMessage(
           request.messageId,
-          "LLM service is not configured. Please add your API key to the .env file."
+          "LLM service is not configured. Please add your API key to the .env file.",
         );
         return;
       }
 
-      const messages = await this.prepareMessagesWithContext(request);
+      const messages = await this.prepareMessagesWithContext();
       await this.streamResponse(messages, request.messageId);
     } catch (error) {
       console.error("Error in LLM request:", error);
       this.handleStreamError(error, request.messageId);
+    }
+  }
+
+  private async getScreenshot(): Promise<string | null> {
+    if (!this.window?.activeTab) return null;
+
+    try {
+      const image = await this.window.activeTab.screenshot();
+      return image.toDataURL();
+    } catch (error) {
+      console.error("Failed to capture screenshot:", error);
+      return null;
     }
   }
 
@@ -166,46 +204,75 @@ export class LLMClient {
     this.sendMessagesToRenderer();
   }
 
-  getMessages(): CoreMessage[] {
+  getMessages(): ModelMessage[] {
     return this.messages;
+  }
+
+  getModel(): LanguageModel | null {
+    return this.model;
   }
 
   private sendMessagesToRenderer(): void {
     this.webContents.send("chat-messages-updated", this.messages);
   }
 
-  private async prepareMessagesWithContext(_request: ChatRequest): Promise<CoreMessage[]> {
-    // Get page context from active tab
+  private async prepareMessagesWithContext(): Promise<ModelMessage[]> {
     let pageUrl: string | null = null;
     let pageText: string | null = null;
-    
-    if (this.window) {
-      const activeTab = this.window.activeTab;
-      if (activeTab) {
-        pageUrl = activeTab.url;
-        try {
-          pageText = await activeTab.getTabText();
-        } catch (error) {
-          console.error("Failed to get page text:", error);
-        }
+
+    if (this.window?.activeTab) {
+      pageUrl = this.window.activeTab.url;
+      try {
+        pageText = await this.window.activeTab.getTabText();
+      } catch (error) {
+        console.error("Failed to get page text:", error);
       }
     }
 
-    // Build system message
-    const systemMessage: CoreMessage = {
+    const systemMessage: ModelMessage = {
       role: "system",
       content: this.buildSystemPrompt(pageUrl, pageText),
     };
 
-    // Include all messages in history (system + conversation)
     return [systemMessage, ...this.messages];
   }
 
-  private buildSystemPrompt(url: string | null, pageText: string | null): string {
+  private buildSystemPrompt(
+    url: string | null,
+    pageText: string | null,
+  ): string {
     const parts: string[] = [
-      "You are a helpful AI assistant integrated into a web browser.",
-      "You can analyze and discuss web pages with the user.",
+      "You are a powerful AI assistant integrated into a web browser with the ability to automate tasks and execute code.",
+      "You can analyze web pages, interact with them, and automate workflows for the user.",
       "The user's messages may include screenshots of the current page as the first image.",
+      "",
+      "=== KEYBOARD SHORTCUTS ===",
+      "You can manage keyboard shortcuts for automations and workflows:",
+      "- 'addKeyboardShortcut': Create shortcuts with 3 action types:",
+      "  - 'code': Execute JavaScript immediately when pressed (no AI involved)",
+      "  - 'prompt': Send a message to you (the AI) when pressed",
+      "  - 'both': Execute code AND send a prompt",
+      "- 'removeKeyboardShortcut': Remove existing shortcuts",
+      "- 'listKeyboardShortcuts': See all registered shortcuts",
+      "- 'updateKeyboardShortcut': Modify existing shortcuts",
+      "",
+      "For immediate actions (like clicking a button, scrolling, or toggling something), use actionType='code'.",
+      "For tasks requiring AI reasoning, use actionType='prompt'.",
+      "Use accelerators like 'CmdOrCtrl+Shift+1', 'Alt+1', etc. Avoid common shortcuts (Ctrl+C, Ctrl+V, Ctrl+T, etc.).",
+      "",
+      "=== CODE EXECUTION & PAGE AUTOMATION ===",
+      "You can execute JavaScript and automate interactions on the current page:",
+      "- 'executeJavaScript': Run any JavaScript code on the page (DOM manipulation, data extraction, etc.)",
+      "- 'navigateToUrl': Navigate to a URL",
+      "- 'clickElement': Click elements by CSS selector",
+      "- 'typeText': Type text into input fields",
+      "- 'getPageInfo': Get page URL, title, and interactive elements",
+      "- 'extractData': Extract structured data using CSS selectors",
+      "- 'waitForElement': Wait for elements to appear (useful after navigation)",
+      "- 'screenshot': Capture a screenshot of the current page",
+      "",
+      "When automating, prefer using specific tools (clickElement, typeText) over raw JavaScript when possible.",
+      "For complex operations, you can chain multiple tool calls together.",
     ];
 
     if (url) {
@@ -219,7 +286,7 @@ export class LLMClient {
 
     parts.push(
       "\nPlease provide helpful, accurate, and contextual responses about the current webpage.",
-      "If the user asks about specific content, refer to the page content and/or screenshot provided."
+      "If the user asks about specific content, refer to the page content and/or screenshot provided.",
     );
 
     return parts.join("\n");
@@ -231,68 +298,113 @@ export class LLMClient {
   }
 
   private async streamResponse(
-    messages: CoreMessage[],
-    messageId: string
+    messages: ModelMessage[],
+    messageId: string,
   ): Promise<void> {
     if (!this.model) {
       throw new Error("Model not initialized");
     }
+    await this.initializeMCPTools();
 
-    try {
-      const result = await streamText({
-        model: this.model,
-        messages,
-        temperature: DEFAULT_TEMPERATURE,
-        maxRetries: 3,
-        abortSignal: undefined, // Could add abort controller for cancellation
-      });
+    // Combine built-in tools with MCP tools
+    const allTools: ToolSet = {
+      ...this.builtInTools,
+      ...this.mcpTools,
+    };
 
-      await this.processStream(result.textStream, messageId);
-    } catch (error) {
-      throw error; // Re-throw to be handled by the caller
-    }
+    const result = streamText({
+      model: this.model,
+      messages,
+      tools: Object.keys(allTools).length > 0 ? allTools : undefined,
+      stopWhen: stepCountIs(10), // Allow up to 5 steps for multi-step tool calling
+      temperature: DEFAULT_TEMPERATURE,
+      maxRetries: 3,
+    });
+
+    await this.processFullStream(result.fullStream, messageId);
   }
 
-  private async processStream(
-    textStream: AsyncIterable<string>,
-    messageId: string
+  private async processFullStream(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fullStream: AsyncIterable<any>,
+    messageId: string,
   ): Promise<void> {
     let accumulatedText = "";
-
-    // Create a placeholder assistant message
-    const assistantMessage: CoreMessage = {
-      role: "assistant",
-      content: "",
-    };
-    
-    // Keep track of the index for updates
     const messageIndex = this.messages.length;
-    this.messages.push(assistantMessage);
+    this.messages.push({ role: "assistant", content: "" });
 
-    for await (const chunk of textStream) {
-      accumulatedText += chunk;
+    for await (const chunk of fullStream) {
+      switch (chunk.type) {
+        case "text-delta": {
+          // AI SDK uses either 'text' or 'textDelta' depending on version
+          const textContent = chunk.textDelta || chunk.text;
+          if (textContent) {
+            accumulatedText += textContent;
+            this.messages[messageIndex].content = accumulatedText;
+            this.sendMessagesToRenderer();
+            this.sendStreamChunk(messageId, {
+              content: textContent,
+              isComplete: false,
+            });
+          }
+          break;
+        }
 
-      // Update assistant message content
-      this.messages[messageIndex] = {
-        role: "assistant",
-        content: accumulatedText,
-      };
-      this.sendMessagesToRenderer();
+        case "tool-call":
+          // AI SDK uses toolName and input for tool calls
+          {
+            const toolName = chunk.toolName || "unknown";
+            const args = chunk.input || chunk.args || {};
+            console.log(
+              `🔧 Tool call: ${toolName}`,
+              JSON.stringify(args, null, 2),
+            );
+            this.sendStreamChunk(messageId, {
+              content: "",
+              isComplete: false,
+              toolCall: {
+                toolName,
+                args,
+              },
+            });
+          }
+          break;
 
-      this.sendStreamChunk(messageId, {
-        content: chunk,
-        isComplete: false,
-      });
+        case "tool-result":
+          // AI SDK uses toolName and output for tool results
+          {
+            const toolName = chunk.toolName || "unknown";
+            const result = chunk.output ?? chunk.result;
+            console.log(
+              `✅ Tool result: ${toolName}`,
+              JSON.stringify(result, null, 2),
+            );
+            this.sendStreamChunk(messageId, {
+              content: "",
+              isComplete: false,
+              toolResult: {
+                toolName,
+                result,
+              },
+            });
+          }
+          break;
+
+        case "finish":
+          // Stream is complete
+          console.log("🏁 Stream finished");
+          break;
+
+        case "error":
+          console.error("Stream error:", chunk.error);
+          break;
+
+        default:
+          // Silently ignore other chunk types (start, start-step, finish-step, etc.)
+          break;
+      }
     }
 
-    // Final update with complete content
-    this.messages[messageIndex] = {
-      role: "assistant",
-      content: accumulatedText,
-    };
-    this.sendMessagesToRenderer();
-
-    // Send the final complete signal
     this.sendStreamChunk(messageId, {
       content: accumulatedText,
       isComplete: true,
@@ -301,9 +413,7 @@ export class LLMClient {
 
   private handleStreamError(error: unknown, messageId: string): void {
     console.error("Error streaming from LLM:", error);
-
-    const errorMessage = this.getErrorMessage(error);
-    this.sendErrorMessage(messageId, errorMessage);
+    this.sendErrorMessage(messageId, this.getErrorMessage(error));
   }
 
   private getErrorMessage(error: unknown): string {
@@ -311,27 +421,19 @@ export class LLMClient {
       return "An unexpected error occurred. Please try again.";
     }
 
-    const message = error.message.toLowerCase();
-
-    if (message.includes("401") || message.includes("unauthorized")) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("401") || msg.includes("unauthorized"))
       return "Authentication error: Please check your API key in the .env file.";
-    }
-
-    if (message.includes("429") || message.includes("rate limit")) {
+    if (msg.includes("429") || msg.includes("rate limit"))
       return "Rate limit exceeded. Please try again in a few moments.";
-    }
-
     if (
-      message.includes("network") ||
-      message.includes("fetch") ||
-      message.includes("econnrefused")
-    ) {
+      msg.includes("network") ||
+      msg.includes("fetch") ||
+      msg.includes("econnrefused")
+    )
       return "Network error: Please check your internet connection.";
-    }
-
-    if (message.includes("timeout")) {
+    if (msg.includes("timeout"))
       return "Request timeout: The service took too long to respond. Please try again.";
-    }
 
     return "Sorry, I encountered an error while processing your request. Please try again.";
   }

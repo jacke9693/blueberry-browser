@@ -10,7 +10,7 @@ interface TabInfo {
 interface TopBarAPI {
   // Tab management
   createTab: (
-    url?: string
+    url?: string,
   ) => Promise<{ id: string; title: string; url: string } | null>;
   closeTab: (tabId: string) => Promise<boolean>;
   switchTab: (tabId: string) => Promise<boolean>;
@@ -28,6 +28,20 @@ interface TopBarAPI {
 
   // Sidebar
   toggleSidebar: () => Promise<void>;
+
+  // CAPTCHA solving
+  detectCaptcha: () => Promise<{
+    found: boolean;
+    type: "text" | "image" | "recaptcha" | "hcaptcha" | "unknown";
+    selector?: string;
+    imageUrl?: string;
+    question?: string;
+  }>;
+  solveCaptcha: () => Promise<{
+    success: boolean;
+    message: string;
+    answer?: string;
+  }>;
 }
 
 declare global {
@@ -36,4 +50,3 @@ declare global {
     topBarAPI: TopBarAPI;
   }
 }
-

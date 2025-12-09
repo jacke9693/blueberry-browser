@@ -22,6 +22,12 @@ export class EventManager {
     // Dark mode events
     this.handleDarkModeEvents();
 
+    // CAPTCHA events
+    this.handleCaptchaEvents();
+
+    // Keyboard shortcut events
+    this.handleKeyboardShortcutEvents();
+
     // Debug events
     this.handleDebugEvents();
   }
@@ -223,12 +229,112 @@ export class EventManager {
     ipcMain.on("ping", () => console.log("pong"));
   }
 
+  private handleCaptchaEvents(): void {
+    // Detect CAPTCHA on current page
+    ipcMain.handle("captcha-detect", async () => {
+      const activeTab = this.mainWindow.activeTab;
+      if (!activeTab) {
+        return { found: false, type: "unknown" };
+      }
+      return await this.mainWindow.captchaSolver.detectCaptcha(activeTab);
+    });
+
+    // Auto-solve CAPTCHA
+    ipcMain.handle("captcha-solve", async () => {
+      const activeTab = this.mainWindow.activeTab;
+      if (!activeTab) {
+        return {
+          success: false,
+          message: "No active tab",
+        };
+      }
+      return await this.mainWindow.captchaSolver.autoSolveCaptcha(activeTab);
+    });
+  }
+
+  private handleKeyboardShortcutEvents(): void {
+    const handler = this.mainWindow.keyboardShortcutHandler;
+
+    // Get all keyboard shortcuts
+    ipcMain.handle("keyboard-shortcuts:get-all", () => {
+      return handler.getAllShortcuts();
+    });
+
+    // Get a specific shortcut by ID
+    ipcMain.handle("keyboard-shortcuts:get", (_, id: string) => {
+      return handler.getShortcut(id);
+    });
+
+    // Add a new keyboard shortcut
+    ipcMain.handle(
+      "keyboard-shortcuts:add",
+      (
+        _,
+        shortcut: Omit<
+          {
+            accelerator: string;
+            name: string;
+            description: string;
+            action:
+              | { type: "prompt"; prompt: string }
+              | { type: "code"; code: string }
+              | { type: "both"; prompt: string; code: string };
+          },
+          "id" | "createdAt"
+        >,
+      ) => {
+        const result = handler.addShortcut(shortcut);
+        return result
+          ? { success: true, shortcut: result }
+          : {
+              success: false,
+              error: "Failed to add shortcut. Check accelerator format.",
+            };
+      },
+    );
+
+    // Remove a keyboard shortcut by ID
+    ipcMain.handle("keyboard-shortcuts:remove", (_, id: string) => {
+      const success = handler.removeShortcut(id);
+      return { success };
+    });
+
+    // Remove a keyboard shortcut by accelerator
+    ipcMain.handle(
+      "keyboard-shortcuts:remove-by-accelerator",
+      (_, accelerator: string) => {
+        const success = handler.removeShortcutByAccelerator(accelerator);
+        return { success };
+      },
+    );
+
+    // Update a keyboard shortcut
+    ipcMain.handle(
+      "keyboard-shortcuts:update",
+      (
+        _,
+        id: string,
+        updates: {
+          accelerator?: string;
+          name?: string;
+          description?: string;
+          prompt?: string;
+        },
+      ) => {
+        const result = handler.updateShortcut(id, updates);
+        return result
+          ? { success: true, shortcut: result }
+          : { success: false, error: "Failed to update shortcut." };
+      },
+    );
+  }
+
   private broadcastDarkMode(sender: WebContents, isDarkMode: boolean): void {
     // Send to topbar
     if (this.mainWindow.topBar.view.webContents !== sender) {
       this.mainWindow.topBar.view.webContents.send(
         "dark-mode-updated",
-        isDarkMode
+        isDarkMode,
       );
     }
 
@@ -236,7 +342,7 @@ export class EventManager {
     if (this.mainWindow.sidebar.view.webContents !== sender) {
       this.mainWindow.sidebar.view.webContents.send(
         "dark-mode-updated",
-        isDarkMode
+        isDarkMode,
       );
     }
 

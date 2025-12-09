@@ -42,7 +42,7 @@ export const useDarkMode = () => {
       if (window.electron) {
         window.electron.ipcRenderer.removeListener(
           "dark-mode-updated",
-          handleDarkModeUpdate
+          handleDarkModeUpdate,
         );
       }
     };

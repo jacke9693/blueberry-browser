@@ -1,22 +1,31 @@
 import { is } from "@electron-toolkit/utils";
-import { BaseWindow, WebContentsView } from "electron";
+import { BaseWindow, WebContentsView, ipcMain } from "electron";
 import { join } from "path";
 import { LLMClient } from "./LLMClient";
+import type { MCPManager } from "./MCPManager";
 
 export class SideBar {
   private webContentsView: WebContentsView;
   private baseWindow: BaseWindow;
   private llmClient: LLMClient;
   private isVisible: boolean = true;
+  private mcpManager: MCPManager | null = null;
 
-  constructor(baseWindow: BaseWindow) {
+  constructor(baseWindow: BaseWindow, mcpManager?: MCPManager) {
     this.baseWindow = baseWindow;
     this.webContentsView = this.createWebContentsView();
     baseWindow.contentView.addChildView(this.webContentsView);
     this.setupBounds();
 
-    // Initialize LLM client
-    this.llmClient = new LLMClient(this.webContentsView.webContents);
+    // Initialize LLM client with optional MCP manager
+    this.llmClient = new LLMClient(
+      this.webContentsView.webContents,
+      mcpManager,
+    );
+    this.mcpManager = mcpManager || null;
+
+    // Set up MCP IPC handlers
+    this.setupMCPHandlers();
   }
 
   private createWebContentsView(): WebContentsView {
@@ -34,16 +43,42 @@ export class SideBar {
       // In development, load through Vite dev server
       const sidebarUrl = new URL(
         "/sidebar/",
-        process.env["ELECTRON_RENDERER_URL"]
+        process.env["ELECTRON_RENDERER_URL"],
       );
       webContentsView.webContents.loadURL(sidebarUrl.toString());
     } else {
       webContentsView.webContents.loadFile(
-        join(__dirname, "../renderer/sidebar.html")
+        join(__dirname, "../renderer/sidebar.html"),
       );
     }
 
     return webContentsView;
+  }
+
+  private setupMCPHandlers(): void {
+    // Get MCP configuration
+    ipcMain.handle("mcp:get-config", async () => {
+      if (!this.mcpManager) return null;
+      return this.mcpManager.getConfig();
+    });
+
+    // Save MCP configuration
+    ipcMain.handle("mcp:save-config", async (_event, config) => {
+      if (!this.mcpManager) throw new Error("MCP Manager not initialized");
+      await this.mcpManager.saveConfig(config);
+    });
+
+    // Get MCP server status
+    ipcMain.handle("mcp:get-status", async () => {
+      if (!this.mcpManager) return {};
+      return this.mcpManager.getStatus();
+    });
+
+    // Reload MCP servers
+    ipcMain.handle("mcp:reload", async () => {
+      if (!this.mcpManager) throw new Error("MCP Manager not initialized");
+      await this.mcpManager.reload();
+    });
   }
 
   private setupBounds(): void {
